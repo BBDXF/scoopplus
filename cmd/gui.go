@@ -3,10 +3,23 @@ package cmd
 import (
 	"scoopplus/frontend"
 
+	"github.com/spf13/cobra"
 	"github.com/wailsapp/wails/v2"
 	"github.com/wailsapp/wails/v2/pkg/options"
 	"github.com/wailsapp/wails/v2/pkg/options/assetserver"
 )
+
+func init() {
+	rootCmd.AddCommand(rootCmd_gui)
+}
+
+var rootCmd_gui = &cobra.Command{
+	Use:   "gui",
+	Short: "show GUI applicaiton.",
+	Run: func(cmd *cobra.Command, args []string) {
+		WailsGUI()
+	},
+}
 
 func WailsGUI() {
 	// Create an instance of the app structure

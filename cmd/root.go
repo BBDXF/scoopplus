@@ -14,9 +14,6 @@ import (
 var rootCmd = &cobra.Command{
 	Use:   "scoopplus",
 	Short: "A native scoop soft pakage manager tools, a better choise to replace scoop.",
-	Run: func(cmd *cobra.Command, args []string) {
-		WailsGUI()
-	},
 }
 
 // cmd, 初始化scoop目录和配置文件
@@ -31,6 +28,7 @@ var rootCmd_init = &cobra.Command{
 func init() {
 	rootCmd.AddCommand(rootCmd_init)
 }
+
 func Execute() error {
 	return rootCmd.Execute()
 }
