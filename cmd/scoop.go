@@ -6,32 +6,6 @@ import (
 	"github.com/spf13/cobra"
 )
 
-/// scoop cmd
-
-/// list
-/// install 7zip      // 支持 online
-/// uninstall 7zip
-/// update 7zip       // 支持 online
-
-/// search 7zip       // 支持 online
-/// info 7zip         // 支持 online
-/// check             // 支持 online
-/// cache clean
-
-/// bucket list
-/// bucket update     // update buckets and index apps
-/// bucket add <bucket> <url>
-/// bucket remove <bucket>
-
-/// config <key> <value>
-/// config <key>
-/// config list
-
-/// mirror <url>     // config github mirror url
-/// mirror list      // list github mirror urls
-
-/// -o --online      // use online mode, default is offline mode. 可以config online true 修改首选模式, 在线查不到才使用本地bucket.
-
 func init() {
 	scoopCmd.AddCommand(scoopCmd_install)
 	rootCmd.AddCommand(scoopCmd)

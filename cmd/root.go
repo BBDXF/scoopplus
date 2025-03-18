@@ -4,16 +4,47 @@ import (
 	"fmt"
 	"io"
 	"os"
-	"path"
+	"os/exec"
+	"path/filepath"
 	"strings"
 
 	"github.com/spf13/cobra"
 )
 
+/// cmds:
+
+/// init              // 初始化scoop目录和配置文件
+/// docktor           // 检查缺少的依赖，并安装
+
+/// list
+/// install 7zip      // 支持 online
+/// uninstall 7zip
+/// update 7zip       // 支持 online
+/// search 7zip       // 支持 online
+/// info 7zip         // 支持 online
+/// status            // 支持 online
+
+/// cache clean
+
+/// bucket list
+/// bucket update     // update buckets and index apps
+/// bucket add <bucket> <url>
+/// bucket remove <bucket>
+
+/// config <key> <value>
+/// config <key>
+/// config list
+
+/// mirror <url>     // config github mirror url
+/// mirror list      // list github mirror urls
+
+/// -o --online      // use online mode, default is offline mode. 可以config online true 修改首选模式, 在线查不到才使用本地bucket.
+
 // cmd, 默认启动GUI
 var rootCmd = &cobra.Command{
-	Use:   "scoopplus",
-	Short: "A native scoop soft pakage manager tools, a better choise to replace scoop.",
+	Use:     "scoopplus",
+	Version: G_VERSION,
+	Short:   "A native scoop soft pakage manager tools, a better choise to replace scoop.",
 }
 
 // cmd, 初始化scoop目录和配置文件
@@ -27,6 +58,8 @@ var rootCmd_init = &cobra.Command{
 
 func init() {
 	rootCmd.AddCommand(rootCmd_init)
+	cwd, _ := os.Getwd()
+	LoadConfig(cwd)
 }
 
 func Execute() error {
@@ -53,17 +86,17 @@ func ScoopPlusInstall(cwd string) {
 	ScoopFoldersBuild(cwd)
 	// Copy exe
 	exePath, _ := os.Executable()
-	newExeDir := path.Join(cwd, "root", "shims")
-	CopyFile(exePath, path.Join(newExeDir, "scoopplus.exe"))
+	newExeDir := filepath.Join(cwd, "root", "shims")
+	CopyFile(exePath, filepath.Join(newExeDir, "scoopplus.exe"))
 	// Config
-
+	SaveConfig(cwd)
 	// add PATH
 	envPath := os.Getenv("Path")
 	fmt.Println(envPath)
 	if !strings.Contains(envPath, newExeDir) {
 		os.Setenv("Path", envPath+";"+newExeDir)
 		// setx in user env
-		os.StartProcess("setx", []string{"Path", "%Path%;" + newExeDir}, nil)
+		exec.Command("cmd", "/C", "setx", "Path", "%Path%;"+newExeDir).Run()
 	}
 }
 
@@ -78,7 +111,7 @@ func ScoopFoldersBuild(dir string) {
 		`global\`,
 	}
 	for _, folder := range folders {
-		fulldir := path.Join(dir, folder)
+		fulldir := filepath.Join(dir, folder)
 		if _, err := os.Stat(fulldir); os.IsNotExist(err) {
 			os.MkdirAll(fulldir, 0755)
 			fmt.Println("Create folder: ", fulldir)

@@ -61,12 +61,12 @@ type JsonBucketAppArch struct {
 	ExtractDir string `json:"extract_dir,omitempty"` // 特殊使用.
 }
 type JsonBucketApp struct {
-	Name        string // app name. json 文件名.
-	Version     string `json:"version"`
-	Description string `json:"description"`
-	License     string `json:"license"` // 可能是object, string
-	Homepage    string `json:"homepage"`
-	Notes       string `json:"notes,omitempty"` // 可能是arrary, string
+	Name        string      // app name. json 文件名.
+	Version     string      `json:"version"`
+	Description string      `json:"description"`
+	License     interface{} `json:"license"` // 可能是object, string
+	Homepage    string      `json:"homepage"`
+	Notes       interface{} `json:"notes,omitempty"` // 可能是arrary, string
 
 	Url        string            `json:"url,omitempty"`         // 不区分架构的下载url
 	Hash       string            `json:"hash,omitempty"`        // 和url对应
@@ -74,7 +74,7 @@ type JsonBucketApp struct {
 	ExtractTo  string            `json:"extract_to,omitempty"`  // 和url对应
 	Bin        []string          `json:"bin,omitempty"`         // 特殊使用. 不区分架构的二进制文件. 比如: 7zip.exe, 7z.exe, 7za.exe
 	Shortcuts  [][]string        `json:"shortcuts,omitempty"`   // 特殊使用. 不区分架构的快捷方式. 比如: 7zip.lnk, 7z.lnk, 7za.lnk
-	Persist    []string          `json:"persist,omitempty"`     // 特殊使用. 不区分架构的持久化文件夹. 比如: Formats, Languages, Themes。 也有可能是字符串
+	Persist    interface{}       `json:"persist,omitempty"`     // 特殊使用. 不区分架构的持久化文件夹. 比如: Formats, Languages, Themes。 也有可能是字符串
 	EnvSet     map[string]string `json:"env_set,omitempty"`     // 特殊使用. 不区分架构的环境变量. 比如: "NSISDIR": "$dir" 需要处理通配符
 
 	// 安装后，提示用户的操作。不主动执行

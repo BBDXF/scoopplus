@@ -4,10 +4,10 @@ import (
 	"encoding/json"
 	"fmt"
 	"os"
-	"path"
+	"path/filepath"
 )
 
-var G_VERSION = "v0.0.1"
+var G_VERSION = "v0.1.1"
 var G_SCOOPPLUS_CONFIG_FILE = "scoopplus.json"
 var G_MIRROR_API = "https://api.akams.cn/github"
 
@@ -16,18 +16,21 @@ var G_scoopplus_config ConfigScoopPlus
 // load scoop json to G_scoopplus_config.
 func LoadConfig(cwd string) {
 	// 读取文件内容
-	var file = path.Join(cwd, G_SCOOPPLUS_CONFIG_FILE)
+	var file = filepath.Join(cwd, G_SCOOPPLUS_CONFIG_FILE)
 	fileContent, err := os.ReadFile(file)
-	if err != nil {
-		fmt.Printf("Failed to read config file: %v\n", err)
-		return
-	}
-
-	// 解析 JSON 数据到 G_scoopplus_config
-	err = json.Unmarshal(fileContent, &G_scoopplus_config)
-	if err != nil {
-		fmt.Printf("Failed to decode config file: %v\n", err)
-		return
+	if err == nil {
+		// 解析 JSON 数据到 G_scoopplus_config
+		err = json.Unmarshal(fileContent, &G_scoopplus_config)
+		if err != nil {
+			fmt.Printf("Failed to decode config file: %v\n", err)
+			return
+		}
+	} else {
+		fmt.Printf("Failed to read config file: %v\nUse default settings.\n", err)
+		G_scoopplus_config = ConfigScoopPlus{
+			Online: true,
+			Clean:  true,
+		}
 	}
 
 	// fix something
@@ -54,7 +57,8 @@ func LoadConfig(cwd string) {
 		if len(G_scoopplus_config.Mirrors) > 0 {
 			G_scoopplus_config.Mirror = G_scoopplus_config.Mirrors[0].Url
 		} else {
-			G_scoopplus_config.Mirror = "https://gh-proxy.com/"
+			G_scoopplus_config.Mirror = "https://gh-proxy.net/"
+			G_scoopplus_config.Mirrors = []ConfigMirror{}
 		}
 	}
 	if _, ok := G_scoopplus_config.ScoopConf["scoop_repo"]; !ok {
@@ -63,4 +67,20 @@ func LoadConfig(cwd string) {
 	// if _, ok := G_scoopplus_config.ScoopConf["aria2-enabled"]; !ok {
 	G_scoopplus_config.ScoopConf["aria2-enabled"] = "false" // disable it always
 	// }
+}
+
+func SaveConfig(cwd string) {
+	// 读取文件内容
+	var file = filepath.Join(cwd, G_SCOOPPLUS_CONFIG_FILE)
+	fileContent, err := json.MarshalIndent(G_scoopplus_config, "", "  ")
+	if err != nil {
+		fmt.Printf("Failed to encode config file: %v\n", err)
+		return
+	}
+	// 写入文件内容
+	err = os.WriteFile(file, fileContent, 0644)
+	if err != nil {
+		fmt.Printf("Failed to write config file: %v\n", err)
+		return
+	}
 }
