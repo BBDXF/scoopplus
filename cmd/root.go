@@ -55,6 +55,8 @@ func ScoopPlusInstall(cwd string) {
 	exePath, _ := os.Executable()
 	newExeDir := path.Join(cwd, "root", "shims")
 	CopyFile(exePath, path.Join(newExeDir, "scoopplus.exe"))
+	// Config
+
 	// add PATH
 	envPath := os.Getenv("Path")
 	fmt.Println(envPath)

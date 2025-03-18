@@ -7,6 +7,7 @@ import (
 )
 
 /// scoop cmd
+
 /// list
 /// install 7zip      // 支持 online
 /// uninstall 7zip
