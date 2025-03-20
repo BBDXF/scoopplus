@@ -4,7 +4,9 @@ import (
 	"encoding/json"
 	"fmt"
 	"os"
+	"os/exec"
 	"path/filepath"
+	"strings"
 )
 
 var G_VERSION = "v0.1.1"
@@ -31,6 +33,11 @@ func LoadConfig(cwd string) {
 			Online: true,
 			Clean:  true,
 		}
+	}
+
+	// 7z
+	if G_scoopplus_config.Path7z == "" {
+		G_scoopplus_config.Path7z = WhereExePath("7z")
 	}
 
 	// fix something
@@ -83,4 +90,38 @@ func SaveConfig(cwd string) {
 		fmt.Printf("Failed to write config file: %v\n", err)
 		return
 	}
+}
+
+func EnvUserGet(key string) string {
+	var cmd = fmt.Sprintf("[Environment]::GetEnvironmentVariable('%s', 'User')", key)
+	dt, err := exec.Command("powershell", "-Command", cmd).CombinedOutput()
+	// fmt.Println(err)
+	// fmt.Println(string(dt))
+	if err != nil {
+		return ""
+	}
+	return strings.TrimSpace(string(dt))
+}
+func EnvAllGet(key string) string {
+	return os.Getenv(key)
+
+	// Get-ChildItem Env:PATH
+	// $env:PATH
+}
+
+func EnvUserSet(key string, value string) {
+	var cmd = fmt.Sprintf("[Environment]::SetEnvironmentVariable('%s', '%s', 'User')", key, value)
+	exec.Command("powershell", "-Command", cmd).Run()
+}
+
+// $existingPath = [Environment]::GetEnvironmentVariable("Path", "Machine")
+// $newPath = $existingPath + ";C:\Program Files\MyApp"
+// [Environment]::SetEnvironmentVariable("Path", $newPath, "Machine")
+func EnvUserAppend(key string, val string) {
+	var old = EnvUserGet(key)
+	if strings.Contains(old, val) {
+		return
+	}
+	old += ";" + val
+	EnvUserSet(key, old)
 }

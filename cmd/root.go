@@ -66,8 +66,11 @@ var rootCmd_test = &cobra.Command{
 	Run: func(cmd *cobra.Command, args []string) {
 		fmt.Println("Test command.")
 		var js = "buckets\\main\\bucket\\7zip.json"
-		var scoop_root = os.Getenv("SCOOP")
+		var scoop_root = EnvAllGet("SCOOP")
 		var f = filepath.Join(scoop_root, js)
+		content, _ := os.ReadFile(f)
+		fmt.Println(string(content))
+		fmt.Println("---------------------")
 		app := ScoopAppParse(f)
 		dt, _ := json.MarshalIndent(app, "", "  ")
 		fmt.Print(string(dt))
@@ -109,14 +112,10 @@ func ScoopPlusInstall(cwd string) {
 	CopyFile(exePath, filepath.Join(newExeDir, "scoopplus.exe"))
 	// Config
 	SaveConfig(cwd)
-	// add PATH
-	envPath := os.Getenv("PATH")
-	fmt.Println(envPath)
-	if !strings.Contains(envPath, newExeDir) {
-		os.Setenv("PATH", envPath+";"+newExeDir)
-		// setx in user env
-		exec.Command("cmd", "/C", "setx", "PATH", "%PATH%;"+newExeDir).Run()
-	}
+	// add Path
+	EnvUserAppend("Path", newExeDir)
+	envPath := EnvUserGet("Path")
+	fmt.Println("Path: ", envPath)
 }
 
 func ScoopFoldersBuild(dir string) {
@@ -198,7 +197,7 @@ func ScoopAppParse(json_path string) (app *JsonBucketApp) {
 		return nil
 	}
 	app = &JsonBucketApp{
-		Name:        getFileNameWithoutExt(json_path),
+		Name:        GetFileNameWithoutExt(json_path),
 		Bucket:      json_path,
 		Version:     result.Get("version").String(),
 		Description: result.Get("description").String(),
@@ -216,7 +215,7 @@ func ScoopAppParse(json_path string) (app *JsonBucketApp) {
 	var note = result.Get("notes")
 	if note.IsArray() {
 		for _, note := range note.Array() {
-			app.Notes += "\n" + note.String()
+			app.Notes += note.String() + "\n"
 		}
 	} else {
 		app.Notes = note.String()
@@ -265,14 +264,14 @@ func ScoopAppParse(json_path string) (app *JsonBucketApp) {
 	}
 
 	// depends
-	app.Depends = result.Get("depends").String()
+	app.Depends = _scoop_app_str_or_array(result.Get("depends"))
 	// suggest
-	app.Suggest = result.Get("suggest").String()
+	app.Suggest = _scoop_app_str_or_array(result.Get("suggest"))
 	// installer
 	var installer = result.Get("installer")
 	if installer.IsArray() {
 		installer.ForEach(func(key, value gjson.Result) bool {
-			app.Installer += ", " + value.String()
+			app.Installer += value.String() + "\n"
 			return true
 		})
 	} else {
@@ -291,6 +290,16 @@ func ScoopAppParse(json_path string) (app *JsonBucketApp) {
 		return true
 	})
 
+	// post_install
+	var post_install = result.Get("post_install")
+	if post_install.IsArray() {
+		for _, line := range post_install.Array() {
+			app.PostInstall += line.String() + "\n"
+		}
+	} else {
+		app.PostInstall = post_install.String()
+	}
+
 	return
 }
 
@@ -300,7 +309,7 @@ func _scoop_app_str_or_array(val gjson.Result) (str []string) {
 		for _, item := range val.Array() {
 			str = append(str, item.String())
 		}
-	} else {
+	} else if val.Exists() {
 		str = append(str, val.String())
 	}
 	return
@@ -308,7 +317,7 @@ func _scoop_app_str_or_array(val gjson.Result) (str []string) {
 
 func _scoop_bin_make(ls []string) (k, v string) {
 	if len(ls) == 1 {
-		return getFileNameWithoutExt(ls[0]), ls[0]
+		return GetFileNameWithoutExt(ls[0]), ls[0]
 	} else if len(ls) == 2 {
 		return ls[1], ls[0]
 	}
@@ -327,18 +336,18 @@ func _scoop_app_json_bin(val gjson.Result) (bins map[string]string) {
 				k, v := _scoop_bin_make(args)
 				bins[k] = v
 			} else {
-				k, v := _scoop_bin_make([]string{val.String()})
+				k, v := _scoop_bin_make([]string{item.String()})
 				bins[k] = v
 			}
 		}
-	} else {
+	} else if val.Exists() {
 		k, v := _scoop_bin_make([]string{val.String()})
 		bins[k] = v
 	}
 	return
 }
 
-func getFileNameWithoutExt(json_path string) string {
+func GetFileNameWithoutExt(json_path string) string {
 	// if strings.HasPrefix(json_path, "http") {
 	// 	parsedURL, err := url.Parse(json_path)
 	// 	if err != nil {
@@ -352,4 +361,72 @@ func getFileNameWithoutExt(json_path string) string {
 	ext := filepath.Ext(base)
 	return base[:len(base)-len(ext)]
 	// }
+}
+
+// msiexec /i "xxxxx.msi" /qr TARGETDIR=xxxx
+// q是安静模式，无用户交互，/q后面再带上nbrf，可以设置软件安装界面的显示方式
+// q[n|b|r|f] 设置用户界面级别
+// n - 无用户界面
+// b - 基本界面
+// r - 精简界面
+// f - 完整界面(默认值)
+func ScoopUnzipMsi(msi_path, tmp_path, out_dir string, msi_in_dir string) (err error) {
+	// 1 解压到临时文件夹
+	err = os.RemoveAll(tmp_path)
+	if err != nil {
+		return
+	}
+	err = os.MkdirAll(tmp_path, 0755)
+	if err != nil {
+		return
+	}
+	// 最后删除tmp目录
+	defer os.RemoveAll(tmp_path)
+
+	// 解压
+	cmd := exec.Command("msiexec", "/a", msi_path, "/qn", "TARGETDIR="+out_dir)
+	err = cmd.Run()
+	if err != nil {
+		return
+	}
+	// 2 Copy 想要的文件夹到output
+	var src_dir = filepath.Join(tmp_path, msi_in_dir)
+	err = os.CopyFS(src_dir, os.DirFS(out_dir))
+	if err != nil {
+		return
+	}
+	return
+}
+
+func ScoopUnzipFile(zip_path, tmp_path, out_dir string, zip_in_dir string) (err error) {
+	// 1 解压到临时文件夹
+	err = os.RemoveAll(tmp_path)
+	if err != nil {
+		return
+	}
+	err = os.MkdirAll(tmp_path, 0755)
+	if err != nil {
+		return
+	}
+	// 最后删除tmp目录
+	defer os.RemoveAll(tmp_path)
+
+	// 解压
+	var bin_7z = WhereExePath("7z")
+	cmd := exec.Command(bin_7z, "x", zip_path, "-o"+tmp_path, zip_in_dir)
+	err = cmd.Run()
+	if err != nil {
+		return
+	}
+	return
+}
+
+// inno for innosetup exe
+func ScoopUnzipInno(zip_path, tmp_path, out_dir string, zip_in_dir string) (err error) {
+	return
+}
+
+// wix for installer  exe
+func ScoopUnzipInstaller(zip_path, tmp_path, out_dir string, zip_in_dir string) (err error) {
+	return
 }
